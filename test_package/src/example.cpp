@@ -1,5 +1,7 @@
-#include "libmemcached.h"
+#include <libmemcached-1.0/memcached.h>
+#include <iostream>
 
 int main() {
-    libmemcached();
+    std::cout << memcached_lib_version() << '\n';
+    return 0;
 }
