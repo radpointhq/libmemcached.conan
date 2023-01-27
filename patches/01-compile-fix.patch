@@ -1,8 +1,7 @@
-diff --git a/clients/memflush.cc b/clients/memflush.cc
-index 8bd0dbf..cdba743 100644
---- a/clients/memflush.cc
-+++ b/clients/memflush.cc
-@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
+diff -uNr libmemcached-1.0.18/clients/memflush.cc libmemcached-1.0.18.patched/clients/memflush.cc
+--- a/clients/memflush.cc	2014-02-09 12:52:42.000000000 +0100
++++ b/clients/memflush.cc	2021-10-27 12:26:24.000000000 +0200
+@@ -39,7 +39,7 @@
  {
    options_parse(argc, argv);
  
@@ -11,7 +10,7 @@ index 8bd0dbf..cdba743 100644
    {
      char *temp;
  
-@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
+@@ -48,7 +48,7 @@
        opt_servers= strdup(temp);
      }
  
@@ -20,215 +19,726 @@ index 8bd0dbf..cdba743 100644
      {
        std::cerr << "No Servers provided" << std::endl;
        exit(EXIT_FAILURE);
-diff --git a/example/byteorder.cc b/example/byteorder.cc
-index fdfa021..8c03d35 100644
---- a/example/byteorder.cc
-+++ b/example/byteorder.cc
-@@ -42,27 +42,59 @@
- #include <example/byteorder.h>
- 
- /* Byte swap a 64-bit number. */
--#ifndef swap64
--static inline uint64_t swap64(uint64_t in)
--{
--#ifndef WORDS_BIGENDIAN
--  /* Little endian, flip the bytes around until someone makes a faster/better
-+#if !defined(htonll) && !defined(ntohll)
-+#if __BYTE_ORDER == __LITTLE_ENDIAN
-+# if defined(__FreeBSD__)
-+#  include <sys/endian.h>
-+#  define htonll(x) bswap64(x)
-+#  define ntohll(x) bswap64(x)
-+# elif defined(__APPLE__)
-+#  include <libkern/OSByteOrder.h>
-+#  define htonll(x) OSSwapInt64(x)
-+#  define ntohll(x) OSSwapInt64(x)
-+# elif defined(__OpenBSD__)
-+#  include <sys/types.h>
-+#  define htonll(x) swap64(x)
-+#  define ntohll(x) swap64(x)
-+# elif defined(__NetBSD__)
-+#  include <sys/types.h>
-+#  include <machine/bswap.h>
-+#  if defined(__BSWAP_RENAME) && !defined(__bswap_32)
-+#   define htonll(x) bswap64(x)
-+#   define ntohll(x) bswap64(x)
-+#  endif
-+# elif defined(__sun) || defined(sun)
-+#  include <sys/byteorder.h>
-+#  define htonll(x) BSWAP_64(x)
-+#  define ntohll(x) BSWAP_64(x)
-+# elif defined(_MSC_VER)
-+#  include <stdlib.h>
-+#  define htonll(x) _byteswap_uint64(x)
-+#  define ntohll(x) _byteswap_uint64(x)
-+# else
-+#  include <byteswap.h>
-+#  ifndef bswap_64
-+   /* Little endian, flip the bytes around until someone makes a faster/better
-    * way to do this. */
--  uint64_t rv= 0;
--  for (uint8_t x= 0; x < 8; x++)
--  {
--    rv= (rv << 8) | (in & 0xff);
--    in >>= 8;
--  }
--  return rv;
-+   static inline uint64_t bswap_64(uint64_t in)
-+   {
-+      uint64_t rv= 0;
-+      for (uint8_t x= 0; x < 8; x++)
-+      {
-+        rv= (rv << 8) | (in & 0xff);
-+        in >>= 8;
-+      }
-+      return rv;
-+   }
-+#  endif
-+#  define htonll(x) bswap_64(x)
-+#  define ntohll(x) bswap_64(x)
-+# endif
- #else
--  /* big-endian machines don't need byte swapping */
--  return in;
--#endif // WORDS_BIGENDIAN
+diff -uNr libmemcached-1.0.18/libhashkit-1.0/configure.h libmemcached-1.0.18.patched/libhashkit-1.0/configure.h
+--- a/libhashkit-1.0/configure.h	2014-02-09 12:57:32.000000000 +0100
++++ b/libhashkit-1.0/configure.h	1970-01-01 01:00:00.000000000 +0100
+@@ -1,53 +0,0 @@
+-/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+- * 
+- *  HashKit library
+- *
+- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+- *  Copyright (C) 2009-2010 Brian Aker All rights reserved.
+- *
+- *  Redistribution and use in source and binary forms, with or without
+- *  modification, are permitted provided that the following conditions are
+- *  met:
+- *
+- *      * Redistributions of source code must retain the above copyright
+- *  notice, this list of conditions and the following disclaimer.
+- *
+- *      * Redistributions in binary form must reproduce the above
+- *  copyright notice, this list of conditions and the following disclaimer
+- *  in the documentation and/or other materials provided with the
+- *  distribution.
+- *
+- *      * The names of its contributors may not be used to endorse or
+- *  promote products derived from this software without specific prior
+- *  written permission.
+- *
+- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+- *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+- *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+- *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+- *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+- *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+- *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+- *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+- *
+- */
+-
+-
+-
+-
+-
+-#pragma once
+-
+-#define LIBHASHKIT_VERSION_STRING "1.0.0"
+-#define LIBHASHKIT_VERSION_HEX 0x01000000
+-
+-#ifdef __cplusplus
+-extern "C" {
+-#endif
+-
+-#ifdef __cplusplus
 -}
-+# define htonll(x) (x)
-+# define ntohll(x) (x)
-+#endif
- #endif
--
--#ifdef HAVE_HTONLL
- 
- uint64_t example_ntohll(uint64_t value)
- {
-@@ -73,17 +105,3 @@ uint64_t example_htonll(uint64_t value)
- {
-   return htonll(value);
- }
--
--#else // HAVE_HTONLL
--
--uint64_t example_ntohll(uint64_t value)
--{
--  return swap64(value);
--}
--
--uint64_t example_htonll(uint64_t value)
--{
--  return swap64(value);
--}
--
--#endif // HAVE_HTONLL
-diff --git a/libmemcached-1.0/memcached.h b/libmemcached-1.0/memcached.h
-index bc16e73..dcee395 100644
---- a/libmemcached-1.0/memcached.h
-+++ b/libmemcached-1.0/memcached.h
-@@ -43,7 +43,11 @@
- #endif
- 
- #ifdef __cplusplus
-+#ifdef _LIBCPP_VERSION
- #  include <cinttypes>
-+#else
-+#  include <tr1/cinttypes>
-+#endif
- #  include <cstddef>
- #  include <cstdlib>
- #else
-diff --git a/libmemcached/byteorder.cc b/libmemcached/byteorder.cc
-index 9f11aa8..f167822 100644
---- a/libmemcached/byteorder.cc
-+++ b/libmemcached/byteorder.cc
-@@ -39,41 +39,66 @@
+-#endif
+diff -uNr libmemcached-1.0.18/libmemcached/byteorder.cc libmemcached-1.0.18.patched/libmemcached/byteorder.cc
+--- a/libmemcached/byteorder.cc	2014-02-09 12:52:42.000000000 +0100
++++ b/libmemcached/byteorder.cc	2021-10-27 12:26:24.000000000 +0200
+@@ -38,6 +38,10 @@
+ #include "mem_config.h"
  #include "libmemcached/byteorder.h"
  
- /* Byte swap a 64-bit number. */
--#ifndef swap64
--static inline uint64_t swap64(uint64_t in)
--{
--#ifndef WORDS_BIGENDIAN
--  /* Little endian, flip the bytes around until someone makes a faster/better
-+#if !defined(htonll) && !defined(ntohll)
-+#if __BYTE_ORDER == __LITTLE_ENDIAN
-+# if defined(__FreeBSD__)
-+#  include <sys/endian.h>
-+#  define htonll(x) bswap64(x)
-+#  define ntohll(x) bswap64(x)
-+# elif defined(__APPLE__)
-+#  include <libkern/OSByteOrder.h>
-+#  define htonll(x) OSSwapInt64(x)
-+#  define ntohll(x) OSSwapInt64(x)
-+# elif defined(__OpenBSD__)
-+#  include <sys/types.h>
-+#  define htonll(x) swap64(x)
-+#  define ntohll(x) swap64(x)
-+# elif defined(__NetBSD__)
-+#  include <sys/types.h>
-+#  include <machine/bswap.h>
-+#  if defined(__BSWAP_RENAME) && !defined(__bswap_32)
-+#   define htonll(x) bswap64(x)
-+#   define ntohll(x) bswap64(x)
-+#  endif
-+# elif defined(__sun) || defined(sun)
-+#  include <sys/byteorder.h>
-+#  define htonll(x) BSWAP_64(x)
-+#  define ntohll(x) BSWAP_64(x)
-+# elif defined(_MSC_VER)
-+#  include <stdlib.h>
-+#  define htonll(x) _byteswap_uint64(x)
-+#  define ntohll(x) _byteswap_uint64(x)
-+# else
-+#  include <byteswap.h>
-+#  ifndef bswap_64
-+   /* Little endian, flip the bytes around until someone makes a faster/better
-    * way to do this. */
--  uint64_t rv= 0;
--  for (uint8_t x= 0; x < 8; ++x)
--  {
--    rv= (rv << 8) | (in & 0xff);
--    in >>= 8;
--  }
--  return rv;
-+   static inline uint64_t bswap_64(uint64_t in)
-+   {
-+      uint64_t rv= 0;
-+      for (uint8_t x= 0; x < 8; x++)
-+      {
-+        rv= (rv << 8) | (in & 0xff);
-+        in >>= 8;
-+      }
-+      return rv;
-+   }
-+#  endif
-+#  define htonll(x) bswap_64(x)
-+#  define ntohll(x) bswap_64(x)
-+# endif
- #else
--  /* big-endian machines don't need byte swapping */
--  return in;
--#endif // WORDS_BIGENDIAN
--}
-+# define htonll(x) (x)
-+# define ntohll(x) (x)
++#if defined HAVE_HTONLL && defined HAVE_SYS_TYPES_H
++#include <sys/types.h>
 +#endif
- #endif
++
+ /* Byte swap a 64-bit number. */
+ #ifndef swap64
+ static inline uint64_t swap64(uint64_t in)
+diff -uNr libmemcached-1.0.18/libmemcached/csl/scanner.cc libmemcached-1.0.18.patched/libmemcached/csl/scanner.cc
+--- a/libmemcached/csl/scanner.cc	2014-02-09 12:53:12.000000000 +0100
++++ b/libmemcached/csl/scanner.cc	2021-10-27 12:26:24.000000000 +0200
+@@ -1337,9 +1337,9 @@
+  */
+ YY_DECL
+ {
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp, *yy_bp;
+-	register int yy_act;
++	yy_state_type yy_current_state;
++	char *yy_cp, *yy_bp;
++	int yy_act;
+     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
+ 
+ #line 109 "libmemcached/csl/scanner.l"
+@@ -1393,7 +1393,7 @@
+ yy_match:
+ 		do
+ 			{
+-			register YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
++			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+ 			if ( yy_accept[yy_current_state] )
+ 				{
+ 				yyg->yy_last_accepting_state = yy_current_state;
+@@ -1933,9 +1933,9 @@
+ static int yy_get_next_buffer (yyscan_t yyscanner)
+ {
+     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
+-	register char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
+-	register char *source = yyg->yytext_ptr;
+-	register int number_to_move, i;
++	char *dest = YY_CURRENT_BUFFER_LVALUE->yy_ch_buf;
++	char *source = yyg->yytext_ptr;
++	int number_to_move, i;
+ 	int ret_val;
+ 
+ 	if ( yyg->yy_c_buf_p > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1] )
+@@ -2067,8 +2067,8 @@
+ 
+     static yy_state_type yy_get_previous_state (yyscan_t yyscanner)
+ {
+-	register yy_state_type yy_current_state;
+-	register char *yy_cp;
++	yy_state_type yy_current_state;
++	char *yy_cp;
+     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
+ 
+ 	yy_current_state = yyg->yy_start;
+@@ -2076,7 +2076,7 @@
+ 
+ 	for ( yy_cp = yyg->yytext_ptr + YY_MORE_ADJ; yy_cp < yyg->yy_c_buf_p; ++yy_cp )
+ 		{
+-		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
++		YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
+ 		if ( yy_accept[yy_current_state] )
+ 			{
+ 			yyg->yy_last_accepting_state = yy_current_state;
+@@ -2101,11 +2101,11 @@
+  */
+     static yy_state_type yy_try_NUL_trans  (yy_state_type yy_current_state , yyscan_t yyscanner)
+ {
+-	register int yy_is_jam;
++	int yy_is_jam;
+     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner; /* This var may be unused depending upon options. */
+-	register char *yy_cp = yyg->yy_c_buf_p;
++	char *yy_cp = yyg->yy_c_buf_p;
+ 
+-	register YY_CHAR yy_c = 1;
++	YY_CHAR yy_c = 1;
+ 	if ( yy_accept[yy_current_state] )
+ 		{
+ 		yyg->yy_last_accepting_state = yy_current_state;
+@@ -2878,7 +2878,7 @@
+ #ifndef yytext_ptr
+ static void yy_flex_strncpy (char* s1, yyconst char * s2, int n , yyscan_t yyscanner)
+ {
+-	register int i;
++	int i;
+ 	for ( i = 0; i < n; ++i )
+ 		s1[i] = s2[i];
+ }
+@@ -2887,7 +2887,7 @@
+ #ifdef YY_NEED_STRLEN
+ static int yy_flex_strlen (yyconst char * s , yyscan_t yyscanner)
+ {
+-	register int n;
++	int n;
+ 	for ( n = 0; s[n]; ++n )
+ 		;
+ 
+diff -uNr libmemcached-1.0.18/libmemcached/csl/scanner.cc.rej libmemcached-1.0.18.patched/libmemcached/csl/scanner.cc.rej
+--- a/libmemcached/csl/scanner.cc.rej	1970-01-01 01:00:00.000000000 +0100
++++ b/libmemcached/csl/scanner.cc.rej	2021-10-27 12:26:24.000000000 +0200
+@@ -0,0 +1,17 @@
++***************
++*** 2076,2082 ****
++  
++  	for ( yy_cp = yyg->yytext_ptr + YY_MORE_ADJ; yy_cp < yyg->yy_c_buf_p; ++yy_cp )
++  		{
++- 		register YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
++  		if ( yy_accept[yy_current_state] )
++  			{
++  			yyg->yy_last_accepting_state = yy_current_state;
++--- 2076,2082 ----
++  
++  	for ( yy_cp = yyg->yytext_ptr + YY_MORE_ADJ; yy_cp < yyg->yy_c_buf_p; ++yy_cp )
++  		{
+++ 		 YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
++  		if ( yy_accept[yy_current_state] )
++  			{
++  			yyg->yy_last_accepting_state = yy_current_state;
+diff -uNr libmemcached-1.0.18/libmemcached/memcached.cc libmemcached-1.0.18.patched/libmemcached/memcached.cc
+--- a/libmemcached/memcached.cc	2014-02-09 12:52:42.000000000 +0100
++++ b/libmemcached/memcached.cc	2021-10-27 12:26:24.000000000 +0200
+@@ -146,6 +146,8 @@
+ 
+   libmemcached_free(ptr, ptr->ketama.continuum);
+   ptr->ketama.continuum= NULL;
++  ptr->ketama.continuum_count= 0;
++  ptr->ketama.continuum_points_counter= 0;
+ 
+   memcached_array_free(ptr->_namespace);
+   ptr->_namespace= NULL;
+@@ -285,6 +287,8 @@
+   {
+     libmemcached_free(self, self->ketama.continuum);
+     self->ketama.continuum= NULL;
++    self->ketama.continuum_count= 0;
++    self->ketama.continuum_points_counter= 0;
+ 
+     memcached_instance_list_free(memcached_instance_list(self), self->number_of_hosts);
+     memcached_instance_set(self, NULL, 0);
+diff -uNr libmemcached-1.0.18/libmemcached-1.0/configure.h libmemcached-1.0.18.patched/libmemcached-1.0/configure.h
+--- a/libmemcached-1.0/configure.h	2014-02-09 12:57:32.000000000 +0100
++++ b/libmemcached-1.0/configure.h	1970-01-01 01:00:00.000000000 +0100
+@@ -1,52 +0,0 @@
+-/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+- * 
+- *  Libmemcached library
+- *
+- *  Copyright (C) 2011 Data Differential, http://datadifferential.com/
+- *  Copyright (C) 2006-2009 Brian Aker, Trond Norbye All rights reserved.
+- *
+- *  Redistribution and use in source and binary forms, with or without
+- *  modification, are permitted provided that the following conditions are
+- *  met:
+- *
+- *      * Redistributions of source code must retain the above copyright
+- *  notice, this list of conditions and the following disclaimer.
+- *
+- *      * Redistributions in binary form must reproduce the above
+- *  copyright notice, this list of conditions and the following disclaimer
+- *  in the documentation and/or other materials provided with the
+- *  distribution.
+- *
+- *      * The names of its contributors may not be used to endorse or
+- *  promote products derived from this software without specific prior
+- *  written permission.
+- *
+- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+- *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+- *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+- *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+- *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+- *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+- *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+- *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+- *
+- */
 -
- 
- uint64_t memcached_ntohll(uint64_t value)
- {
--#ifdef HAVE_HTONLL
-   return ntohll(value);
--#else
--  return swap64(value);
+-#pragma once
+-
+-#ifdef __cplusplus
+-extern "C" {
 -#endif
+-
+-
+-#define LIBMEMCACHED_WITH_SASL_SUPPORT 1
+-
+-#define LIBMEMCACHED_VERSION_STRING "1.0.18"
+-#define LIBMEMCACHED_VERSION_HEX 0x01000018
+-
+-#ifdef __cplusplus
+-}
+-#endif
+diff -uNr libmemcached-1.0.18/libmemcached-1.0/configure.h.rej libmemcached-1.0.18.patched/libmemcached-1.0/configure.h.rej
+--- a/libmemcached-1.0/configure.h.rej	1970-01-01 01:00:00.000000000 +0100
++++ b/libmemcached-1.0/configure.h.rej	2021-10-27 12:26:09.000000000 +0200
+@@ -0,0 +1,17 @@
++***************
++*** 42,48 ****
++  #endif
++  
++  
++- #define LIBMEMCACHED_WITH_SASL_SUPPORT 1
++  
++  #define LIBMEMCACHED_VERSION_STRING "1.0.18"
++  #define LIBMEMCACHED_VERSION_HEX 0x01000018
++--- 42,48 ----
++  #endif
++  
++  
+++ #define LIBMEMCACHED_WITH_SASL_SUPPORT 0
++  
++  #define LIBMEMCACHED_VERSION_STRING "1.0.18"
++  #define LIBMEMCACHED_VERSION_HEX 0x01000018
+diff -uNr libmemcached-1.0.18/libtest/main.cc libmemcached-1.0.18.patched/libtest/main.cc
+--- a/libtest/main.cc	2014-02-09 12:52:42.000000000 +0100
++++ b/libtest/main.cc	2021-10-27 12:28:11.000000000 +0200
+@@ -297,7 +297,7 @@
+         return EXIT_FAILURE;
+       }
+ 
+-      std::auto_ptr<libtest::Framework> frame(new libtest::Framework(signal, binary_name, collection_to_run, wildcard));
++      std::unique_ptr<libtest::Framework> frame(new libtest::Framework(signal, binary_name, collection_to_run, wildcard));
+ 
+       // Run create(), bail on error.
+       {
+diff -uNr libmemcached-1.0.18/libtest/server.cc libmemcached-1.0.18.patched/libtest/server.cc
+--- a/libtest/server.cc	2014-02-09 12:52:42.000000000 +0100
++++ b/libtest/server.cc	2021-10-27 12:32:46.000000000 +0200
+@@ -49,11 +49,9 @@
+ #include <locale>
+ #include <unistd.h>
+ 
+-// trim from end 
+-static inline std::string &rtrim(std::string &s)
+-{ 
+-  s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end()); 
+-  return s; 
++// trim from end (in place)
++static inline void rtrim(std::string &s) {
++    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
  }
  
- uint64_t memcached_htonll(uint64_t value)
- {
--#ifdef HAVE_HTONLL
-   return htonll(value);
--#else
--  return swap64(value);
--#endif
+ #include <libtest/server.h>
+diff -uNr libmemcached-1.0.18/libtest/server_container.cc libmemcached-1.0.18.patched/libtest/server_container.cc
+--- a/libtest/server_container.cc	2014-02-09 12:52:42.000000000 +0100
++++ b/libtest/server_container.cc	2021-10-27 12:33:15.000000000 +0200
+@@ -46,11 +46,9 @@
+ #include <functional> 
+ #include <locale>
+ 
+-// trim from end 
+-static inline std::string &rtrim(std::string &s)
+-{ 
+-  s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end()); 
+-  return s; 
++// trim from end (in place)
++static inline void rtrim(std::string &s) {
++    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
  }
+ 
+ namespace libtest {
+diff -uNr libmemcached-1.0.18/libtest/version.h libmemcached-1.0.18.patched/libtest/version.h
+--- a/libtest/version.h	2014-02-09 12:57:32.000000000 +0100
++++ b/libtest/version.h	1970-01-01 01:00:00.000000000 +0100
+@@ -1,42 +0,0 @@
+-/*  vim:expandtab:shiftwidth=2:tabstop=2:smarttab:
+- * 
+- *  Data Differential YATL (i.e. libtest) library
+- *
+- *  Copyright (C) 2011-2012 Data Differential, http://datadifferential.com/
+- *  All rights reserved.
+- *
+- *  Redistribution and use in source and binary forms, with or without
+- *  modification, are permitted provided that the following conditions are
+- *  met:
+- *
+- *      * Redistributions of source code must retain the above copyright
+- *  notice, this list of conditions and the following disclaimer.
+- *
+- *      * Redistributions in binary form must reproduce the above
+- *  copyright notice, this list of conditions and the following disclaimer
+- *  in the documentation and/or other materials provided with the
+- *  distribution.
+- *
+- *      * The names of its contributors may not be used to endorse or
+- *  promote products derived from this software without specific prior
+- *  written permission.
+- *
+- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+- *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+- *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+- *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+- *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+- *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+- *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+- *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+- *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+- *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+- *
+- */
+-
+-
+-#pragma once
+-
+-#define LIBTEST_VERSION 1.0
+-#define LIBTEST_VERSION_STRING "1.0"
+diff -uNr libmemcached-1.0.18/support/libmemcached.spec libmemcached-1.0.18.patched/support/libmemcached.spec
+--- a/support/libmemcached.spec	2014-02-09 12:57:32.000000000 +0100
++++ b/support/libmemcached.spec	1970-01-01 01:00:00.000000000 +0100
+@@ -1,344 +0,0 @@
+-Name:      libmemcached
+-Summary:   memcached C library and command line tools
+-Version:   1.0.18
+-Release:   1
+-License:   BSD
+-Group:     System Environment/Libraries
+-URL:       http://launchpad.net/libmemcached
+-Source0:   http://download.tangent.org/libmemcached-%{version}.tar.gz
+-
+-# For test suite
+-BuildRequires: bash
+-BuildRequires: binutils
+-BuildRequires: coreutils
+-BuildRequires: cpio
+-BuildRequires: cyrus-sasl-devel
+-BuildRequires: diffutils
+-BuildRequires: elfutils
+-BuildRequires: file
+-BuildRequires: findutils
+-BuildRequires: gawk
+-BuildRequires: gcc
+-BuildRequires: glibc
+-BuildRequires: glibc-common
+-BuildRequires: glibc-devel
+-BuildRequires: glibc-headers
+-BuildRequires: grep
+-BuildRequires: gzip
+-BuildRequires: libevent-devel
+-BuildRequires: libstdc++-devel
+-BuildRequires: libuuid-devel
+-BuildRequires: make
+-BuildRequires: memcached
+-BuildRequires: pkgconfig
+-BuildRequires: python-sphinx
+-BuildRequires: sed
+-BuildRequires: tar
+-
+-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+-
+-
+-%description
+-libmemcached, http://libmemcached.org/, is a C client library to the memcached server
+-(http://danga.com/memcached). It has been designed to be light on memory
+-usage, and provide full access to server side methods.
+-
+-It also implements several command line tools:
+-
+-memcat - Copy the value of a key to standard output.
+-memflush - Flush the contents of your servers.
+-memrm - Remove a key(s) from the serrver.
+-memstat - Dump the stats of your servers to standard output.
+-memslap - Generate testing loads on a memcached cluster.
+-memcp - Copy files to memcached servers.
+-memerror - Creates human readable messages from libmemecached error codes.
+-memcapable - Verify a memcached server for protocol behavior.
+-memexist - Check for the existance of a key.
+-memtouch - Update the expiration value of a key.
+-
+-
+-%package devel
+-Summary: Header files and development libraries for %{name}
+-Group: Development/Libraries
+-Requires: %{name} = %{version}-%{release}
+-
+-%description devel
+-This package contains the header files and development libraries
+-for %{name}. If you like to develop programs using %{name}, 
+-you will need to install %{name}-devel.
+-
+-
+-%prep
+-%setup -q
+-
+-%{__mkdir} examples
+-
+-%build
+-%configure
+-%{__make} %{?_smp_mflags}
+-
+-
+-%install
+-%{__rm} -rf %{buildroot}
+-%{__make} install  DESTDIR="%{buildroot}" AM_INSTALL_PROGRAM_FLAGS=""
+-
+-
+-%check
+-# test suite cannot run in mock (same port use for memcache server on all arch)
+-# 1 test seems to fail.. 
+-# %{__make} check
+-
+-
+-%clean
+-%{__rm} -rf %{buildroot}
+-
+-
+-%post -p /sbin/ldconfig
+-
+-
+-%postun -p /sbin/ldconfig
+- 
+-
+-%files
+-%defattr (-,root,root,-) 
+-%doc AUTHORS COPYING NEWS README THANKS TODO
+-%{_bindir}/mem*
+-%exclude %{_libdir}/libmemcached.la
+-%exclude %{_libdir}/libhashkit.la
+-%exclude %{_libdir}/libmemcachedutil.la
+-%exclude %{_libdir}/libmemcached.a
+-%exclude %{_libdir}/libhashkit.a
+-%exclude %{_libdir}/libmemcachedutil.a
+-%{_libdir}/libhashkit.so.2.0.0
+-%{_libdir}/libmemcached.so.11.0.0
+-%{_libdir}/libmemcachedutil.so.2.0.0
+-%{_libdir}/libhashkit.so.2
+-%{_libdir}/libmemcached.so.11
+-%{_libdir}/libmemcachedutil.so.2
+-%{_mandir}/man1/memaslap.1.gz
+-%{_mandir}/man1/memcapable.1.gz
+-%{_mandir}/man1/memcat.1.gz
+-%{_mandir}/man1/memcp.1.gz
+-%{_mandir}/man1/memdump.1.gz
+-%{_mandir}/man1/memerror.1.gz
+-%{_mandir}/man1/memexist.1.gz
+-%{_mandir}/man1/memflush.1.gz
+-%{_mandir}/man1/memparse.1.gz
+-%{_mandir}/man1/memping.1.gz
+-%{_mandir}/man1/memrm.1.gz
+-%{_mandir}/man1/memslap.1.gz
+-%{_mandir}/man1/memstat.1.gz
+-%{_mandir}/man1/memtouch.1.gz
+-
+-
+-%files devel
+-%defattr (-,root,root,-) 
+-%doc examples
+-%{_datadir}/aclocal/ax_libmemcached.m4
+-%{_includedir}/libhashkit/hashkit.h
+-%{_includedir}/libhashkit-1.0/algorithm.h
+-%{_includedir}/libhashkit-1.0/behavior.h
+-%{_includedir}/libhashkit-1.0/configure.h
+-%{_includedir}/libhashkit-1.0/digest.h
+-%{_includedir}/libhashkit-1.0/function.h
+-%{_includedir}/libhashkit-1.0/has.h
+-%{_includedir}/libhashkit-1.0/hashkit.h
+-%{_includedir}/libhashkit-1.0/hashkit.hpp
+-%{_includedir}/libhashkit-1.0/str_algorithm.h
+-%{_includedir}/libhashkit-1.0/strerror.h
+-%{_includedir}/libhashkit-1.0/types.h
+-%{_includedir}/libhashkit-1.0/visibility.h
+-
+-%{_includedir}/libmemcachedutil-1.0/util.h
+-%{_includedir}/libmemcachedutil-1.0/flush.h
+-%{_includedir}/libmemcachedutil-1.0/pid.h
+-%{_includedir}/libmemcachedutil-1.0/ping.h
+-%{_includedir}/libmemcachedutil-1.0/ostream.hpp
+-%{_includedir}/libmemcachedutil-1.0/pool.h
+-%{_includedir}/libmemcachedutil-1.0/version.h
+-
+-%{_includedir}/libmemcached/memcached.h
+-%{_includedir}/libmemcached/memcached.hpp
+-%{_includedir}/libmemcached/util.h
+-
+-%{_includedir}/libmemcached-1.0/alloc.h
+-%{_includedir}/libmemcached-1.0/allocators.h
+-%{_includedir}/libmemcached-1.0/analyze.h
+-%{_includedir}/libmemcached-1.0/auto.h
+-%{_includedir}/libmemcached-1.0/basic_string.h
+-%{_includedir}/libmemcached-1.0/behavior.h
+-%{_includedir}/libmemcached-1.0/callback.h
+-%{_includedir}/libmemcached-1.0/callbacks.h
+-%{_includedir}/libmemcached-1.0/configure.h
+-%{_includedir}/libmemcached-1.0/defaults.h
+-%{_includedir}/libmemcached-1.0/delete.h
+-%{_includedir}/libmemcached-1.0/deprecated_types.h
+-%{_includedir}/libmemcached-1.0/dump.h
+-%{_includedir}/libmemcached-1.0/error.h
+-%{_includedir}/libmemcached-1.0/exception.hpp
+-%{_includedir}/libmemcached-1.0/exist.h
+-%{_includedir}/libmemcached-1.0/fetch.h
+-%{_includedir}/libmemcached-1.0/flush.h
+-%{_includedir}/libmemcached-1.0/flush_buffers.h
+-%{_includedir}/libmemcached-1.0/get.h
+-%{_includedir}/libmemcached-1.0/hash.h
+-%{_includedir}/libmemcached-1.0/limits.h
+-%{_includedir}/libmemcached-1.0/memcached.h
+-%{_includedir}/libmemcached-1.0/memcached.hpp
+-%{_includedir}/libmemcached-1.0/options.h
+-%{_includedir}/libmemcached-1.0/parse.h
+-%{_includedir}/libmemcached-1.0/platform.h
+-%{_includedir}/libmemcached-1.0/quit.h
+-%{_includedir}/libmemcached-1.0/result.h
+-%{_includedir}/libmemcached-1.0/return.h
+-%{_includedir}/libmemcached-1.0/sasl.h
+-%{_includedir}/libmemcached-1.0/server.h
+-%{_includedir}/libmemcached-1.0/server_list.h
+-%{_includedir}/libmemcached-1.0/stats.h
+-%{_includedir}/libmemcached-1.0/storage.h
+-%{_includedir}/libmemcached-1.0/strerror.h
+-%{_includedir}/libmemcached-1.0/struct/allocator.h
+-%{_includedir}/libmemcached-1.0/struct/analysis.h
+-%{_includedir}/libmemcached-1.0/struct/callback.h
+-%{_includedir}/libmemcached-1.0/struct/memcached.h
+-%{_includedir}/libmemcached-1.0/struct/result.h
+-%{_includedir}/libmemcached-1.0/struct/sasl.h
+-%{_includedir}/libmemcached-1.0/struct/server.h
+-%{_includedir}/libmemcached-1.0/struct/stat.h
+-%{_includedir}/libmemcached-1.0/struct/string.h
+-%{_includedir}/libmemcached-1.0/touch.h
+-%{_includedir}/libmemcached-1.0/triggers.h
+-%{_includedir}/libmemcached-1.0/types.h
+-%{_includedir}/libmemcached-1.0/types/behavior.h
+-%{_includedir}/libmemcached-1.0/types/callback.h
+-%{_includedir}/libmemcached-1.0/types/connection.h
+-%{_includedir}/libmemcached-1.0/types/hash.h
+-%{_includedir}/libmemcached-1.0/types/return.h
+-%{_includedir}/libmemcached-1.0/types/server_distribution.h
+-%{_includedir}/libmemcached-1.0/verbosity.h
+-%{_includedir}/libmemcached-1.0/version.h
+-%{_includedir}/libmemcached-1.0/visibility.h
+-%{_includedir}/libhashkit-1.0/string.h
+-%{_includedir}/libmemcached-1.0/encoding_key.h
+-
+-%{_libdir}/libhashkit.so
+-%{_libdir}/libmemcached.so
+-%{_libdir}/libmemcachedutil.so
+-%{_libdir}/pkgconfig/libmemcached.pc
+-%{_mandir}/man3/hashkit_clone.3.gz
+-%{_mandir}/man3/hashkit_crc32.3.gz
+-%{_mandir}/man3/hashkit_create.3.gz
+-%{_mandir}/man3/hashkit_fnv1_32.3.gz
+-%{_mandir}/man3/hashkit_fnv1_64.3.gz
+-%{_mandir}/man3/hashkit_fnv1a_32.3.gz
+-%{_mandir}/man3/hashkit_fnv1a_64.3.gz
+-%{_mandir}/man3/hashkit_free.3.gz
+-%{_mandir}/man3/hashkit_functions.3.gz
+-%{_mandir}/man3/hashkit_hsieh.3.gz
+-%{_mandir}/man3/hashkit_is_allocated.3.gz
+-%{_mandir}/man3/hashkit_jenkins.3.gz
+-%{_mandir}/man3/hashkit_md5.3.gz
+-%{_mandir}/man3/hashkit_murmur.3.gz
+-%{_mandir}/man3/hashkit_value.3.gz
+-%{_mandir}/man3/libhashkit.3.gz
+-%{_mandir}/man3/libmemcached.3.gz
+-%{_mandir}/man3/libmemcached_check_configuration.3.gz
+-%{_mandir}/man3/libmemcached_configuration.3.gz
+-%{_mandir}/man3/libmemcached_examples.3.gz
+-%{_mandir}/man3/libmemcachedutil.3.gz
+-%{_mandir}/man3/memcached.3.gz
+-%{_mandir}/man3/memcached_add.3.gz
+-%{_mandir}/man3/memcached_add_by_key.3.gz
+-%{_mandir}/man3/memcached_analyze.3.gz
+-%{_mandir}/man3/memcached_append.3.gz
+-%{_mandir}/man3/memcached_append_by_key.3.gz
+-%{_mandir}/man3/memcached_behavior_get.3.gz
+-%{_mandir}/man3/memcached_behavior_set.3.gz
+-%{_mandir}/man3/memcached_callback_get.3.gz
+-%{_mandir}/man3/memcached_callback_set.3.gz
+-%{_mandir}/man3/memcached_cas.3.gz
+-%{_mandir}/man3/memcached_cas_by_key.3.gz
+-%{_mandir}/man3/memcached_clone.3.gz
+-%{_mandir}/man3/memcached_create.3.gz
+-%{_mandir}/man3/memcached_decrement.3.gz
+-%{_mandir}/man3/memcached_decrement_with_initial.3.gz
+-%{_mandir}/man3/memcached_delete.3.gz
+-%{_mandir}/man3/memcached_delete_by_key.3.gz
+-%{_mandir}/man3/memcached_destroy_sasl_auth_data.3.gz
+-%{_mandir}/man3/memcached_dump.3.gz
+-%{_mandir}/man3/memcached_fetch.3.gz
+-%{_mandir}/man3/memcached_fetch_execute.3.gz
+-%{_mandir}/man3/memcached_fetch_result.3.gz
+-%{_mandir}/man3/memcached_flush_buffers.3.gz
+-%{_mandir}/man3/memcached_free.3.gz
+-%{_mandir}/man3/memcached_generate_hash.3.gz
+-%{_mandir}/man3/memcached_generate_hash_value.3.gz
+-%{_mandir}/man3/memcached_get.3.gz
+-%{_mandir}/man3/memcached_get_by_key.3.gz
+-%{_mandir}/man3/memcached_get_memory_allocators.3.gz
+-%{_mandir}/man3/memcached_get_sasl_callbacks.3.gz
+-%{_mandir}/man3/memcached_get_user_data.3.gz
+-%{_mandir}/man3/memcached_increment.3.gz
+-%{_mandir}/man3/memcached_increment_with_initial.3.gz
+-%{_mandir}/man3/memcached_lib_version.3.gz
+-%{_mandir}/man3/memcached_mget.3.gz
+-%{_mandir}/man3/memcached_mget_by_key.3.gz
+-%{_mandir}/man3/memcached_mget_execute.3.gz
+-%{_mandir}/man3/memcached_mget_execute_by_key.3.gz
+-%{_mandir}/man3/memcached_pool_behavior_get.3.gz
+-%{_mandir}/man3/memcached_pool_behavior_set.3.gz
+-%{_mandir}/man3/memcached_pool_create.3.gz
+-%{_mandir}/man3/memcached_pool_destroy.3.gz
+-%{_mandir}/man3/memcached_pool_pop.3.gz
+-%{_mandir}/man3/memcached_pool_push.3.gz
+-%{_mandir}/man3/memcached_pool_fetch.3.gz
+-%{_mandir}/man3/memcached_pool_release.3.gz
+-%{_mandir}/man3/memcached_pool_st.3.gz
+-%{_mandir}/man3/memcached_pool.3.gz
+-%{_mandir}/man3/memcached_prepend.3.gz
+-%{_mandir}/man3/memcached_prepend_by_key.3.gz
+-%{_mandir}/man3/memcached_quit.3.gz
+-%{_mandir}/man3/memcached_replace.3.gz
+-%{_mandir}/man3/memcached_replace_by_key.3.gz
+-%{_mandir}/man3/memcached_sasl_set_auth_data.3.gz
+-%{_mandir}/man3/memcached_server_add.3.gz
+-%{_mandir}/man3/memcached_server_count.3.gz
+-%{_mandir}/man3/memcached_server_cursor.3.gz
+-%{_mandir}/man3/memcached_server_list.3.gz
+-%{_mandir}/man3/memcached_server_list_append.3.gz
+-%{_mandir}/man3/memcached_server_list_count.3.gz
+-%{_mandir}/man3/memcached_server_list_free.3.gz
+-%{_mandir}/man3/memcached_server_push.3.gz
+-%{_mandir}/man3/memcached_servers_parse.3.gz
+-%{_mandir}/man3/memcached_set.3.gz
+-%{_mandir}/man3/memcached_set_by_key.3.gz
+-%{_mandir}/man3/memcached_set_memory_allocators.3.gz
+-%{_mandir}/man3/memcached_set_sasl_callbacks.3.gz
+-%{_mandir}/man3/memcached_set_user_data.3.gz
+-%{_mandir}/man3/memcached_stat.3.gz
+-%{_mandir}/man3/memcached_stat_execute.3.gz
+-%{_mandir}/man3/memcached_stat_get_keys.3.gz
+-%{_mandir}/man3/memcached_last_error_message.3.gz
+-%{_mandir}/man3/memcached_stat_get_value.3.gz
+-%{_mandir}/man3/memcached_stat_servername.3.gz
+-%{_mandir}/man3/memcached_strerror.3.gz
+-%{_mandir}/man3/memcached_exist.3.gz
+-%{_mandir}/man3/memcached_exist_by_key.3.gz
+-%{_mandir}/man3/memcached_touch.3.gz
+-%{_mandir}/man3/memcached_touch_by_key.3.gz
+-%{_mandir}/man3/memcached_verbosity.3.gz
+-%{_mandir}/man3/memcached_version.3.gz
+-
+-
+-
+-%changelog
+-* Tue May  22 2012 Brian Aker <brian@tangent.org> - 1.0.8
+-
+-* Fri Jan  8 2010 Brian Aker <brian@tangent.org> - 0.37
+-- Modified to be explicit in install include files. 
+-
+-* Sat Apr 25 2009 Remi Collet <rpms@famillecollet.com> - 0.28
+-- Initial RPM from Brian Aker spec
+-- create -devel subpackage
+-- add %%post %%postun %%check section
+-
